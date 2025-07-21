@@ -66,9 +66,7 @@ class PostgresUtil:
         if self.conn is not None:
             self.conn.close()
 
-    def _build_memory_vector(
-        self, stay_id: int, X: torch.Tensor, history: Optional[torch.Tensor]
-    ):
+    def _build_memory_vector(self, stay_id: int, history: Optional[torch.Tensor]):
         self._lazy_init()
 
         cursor = self.conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)  # type: ignore
@@ -172,7 +170,7 @@ class PostgresUtil:
             token_block = token_stream
             history = None
 
-        memory = self._build_memory_vector(stay_id, token_block, history)
+        memory = self._build_memory_vector(stay_id, history)
 
         return token_block, memory
 
@@ -230,7 +228,7 @@ class TokenStreamDS(Dataset):
         if len(y) < self.block_size + 1:
             y = torch.nn.functional.pad(y, ((self.block_size + 1) - len(y), 0))
 
-        memory = self.postgresUtil._build_memory_vector(stay_id, X, history)
+        memory = self.postgresUtil._build_memory_vector(stay_id, history)
 
         assert len(X) == self.block_size
         assert len(y) == self.block_size + 1
