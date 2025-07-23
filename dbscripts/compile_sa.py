@@ -73,9 +73,9 @@ class TableTokenizationSpec:
                 or isinstance(i.type, INTEGER)
                 or isinstance(i.type, VARCHAR)
             )
-            and i.name not in tts.ignore_cols
-            and i.name not in tts.modulated_cols.keys()
-            and i.name not in tts.modulated_cols.values()
+            and i.name not in self.ignore_cols
+            and i.name not in self.modulated_cols.keys()
+            and i.name not in self.modulated_cols.values()
         ]
 
 
