@@ -39,6 +39,7 @@ class TableTokenizationSpec:
     ignore_cols: list[str] = field(default_factory=list)
     modulated_cols: dict = field(default_factory=dict)
     needs_alignment: bool = False
+    schema: str = "mimiciv_derived"
 
     def __post_init__(self):
         # columns we never want to tokenize
@@ -113,6 +114,7 @@ TTSs = [
         ["ectopy_frequency", "ectopy_type_secondary", "ectopy_frequency_secondary"],
         needs_alignment=True,
     ),
+    TableTokenizationSpec("bcresults", "onetime", schema="mimiciv_local"),
 ]
 
 # 10 for deciles, 100 for percentiles, etc.
@@ -247,9 +249,7 @@ if __name__ == "__main__":
     ctes_for_union = list()
 
     for tts in TTSs:
-        table = Table(
-            tts.table_name, metadata, autoload_with=engine, schema="mimiciv_derived"
-        )
+        table = Table(tts.table_name, metadata, autoload_with=engine, schema=tts.schema)
 
         if tts.needs_alignment:
             alignment_cte = do_alignment(tts, table, icustays)

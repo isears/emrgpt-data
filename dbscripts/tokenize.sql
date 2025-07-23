@@ -1064,6 +1064,24 @@ CREATE TABLE mimiciv_local.tokenevents AS (
             ) AS tokens (token_label, token_value, token_null) ON true
         WHERE NOT tokens.token_null
     ),
+    bcresults_tokenized AS (
+        SELECT mimiciv_local.bcresults.stay_id AS stay_id,
+            mimiciv_local.bcresults.charttime AS charttime,
+            tokens.token_label AS token_label,
+            tokens.token_value AS token_value
+        FROM mimiciv_local.bcresults
+            JOIN LATERAL (
+                VALUES (
+                        concat(
+                            'bcresults.result.',
+                            CAST(mimiciv_local.bcresults.result AS TEXT)
+                        ),
+                        CAST(NULL AS DOUBLE PRECISION),
+                        mimiciv_local.bcresults.result IS NULL
+                    )
+            ) AS tokens (token_label, token_value, token_null) ON true
+        WHERE NOT tokens.token_null
+    ),
     hour_events AS (
         SELECT mimiciv_derived.icustay_detail.stay_id AS stay_id,
             generate_series(
@@ -1203,6 +1221,12 @@ CREATE TABLE mimiciv_local.tokenevents AS (
             rhythm_tokenized.token_label AS token_label,
             rhythm_tokenized.token_value AS token_value
         FROM rhythm_tokenized
+        UNION ALL
+        SELECT bcresults_tokenized.stay_id AS stay_id,
+            bcresults_tokenized.charttime AS charttime,
+            bcresults_tokenized.token_label AS token_label,
+            bcresults_tokenized.token_value AS token_value
+        FROM bcresults_tokenized
         UNION ALL
         SELECT hour_events.stay_id AS stay_id,
             hour_events.charttime AS charttime,
