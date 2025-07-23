@@ -32,211 +32,231 @@ CREATE TABLE mimiciv_local.tokenevents AS (
             meds.token_label AS token_label,
             meds.uom_label AS uom_label,
             meds.dose AS dose,
-            CAST(
-                floor(
-                    percent_rank() OVER (
-                        PARTITION BY meds.token_label,
-                        meds.uom_label
-                        ORDER BY meds.dose
-                    ) * 10
-                ) AS INTEGER
-            ) AS token_value_disc
+            concat(
+                'magnitude.',
+                CAST(
+                    floor(
+                        percent_rank() OVER (
+                            PARTITION BY meds.token_label,
+                            meds.uom_label
+                            ORDER BY meds.dose
+                        ) * 10
+                    ) AS TEXT
+                )
+            ) AS token_value
         FROM meds
     ),
     vitalsign_tokenized AS (
         SELECT mimiciv_derived.vitalsign.stay_id AS stay_id,
             mimiciv_derived.vitalsign.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM mimiciv_derived.vitalsign
             JOIN LATERAL (
                 VALUES (
                         'vitalsign.heart_rate',
                         mimiciv_derived.vitalsign.heart_rate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.vitalsign.heart_rate IS NULL
                     ),
                     (
                         'vitalsign.sbp',
                         mimiciv_derived.vitalsign.sbp,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.vitalsign.sbp IS NULL
                     ),
                     (
                         'vitalsign.dbp',
                         mimiciv_derived.vitalsign.dbp,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.vitalsign.dbp IS NULL
                     ),
                     (
                         'vitalsign.resp_rate',
                         mimiciv_derived.vitalsign.resp_rate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.vitalsign.resp_rate IS NULL
                     ),
                     (
                         'vitalsign.spo2',
                         mimiciv_derived.vitalsign.spo2,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.vitalsign.spo2 IS NULL
                     ),
                     (
                         'vitalsign.glucose',
                         mimiciv_derived.vitalsign.glucose,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.vitalsign.glucose IS NULL
                     ),
                     (
                         concat(
-                            'vitalsign.temperature.',
+                            'vitalsign.temperature',
                             CAST(
                                 mimiciv_derived.vitalsign.temperature_site AS VARCHAR
                             )
                         ),
                         mimiciv_derived.vitalsign.temperature,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.vitalsign.temperature IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     crrt_tokenized AS (
         SELECT mimiciv_derived.crrt.stay_id AS stay_id,
             mimiciv_derived.crrt.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM mimiciv_derived.crrt
             JOIN LATERAL (
                 VALUES (
                         'crrt.access_pressure',
                         mimiciv_derived.crrt.access_pressure,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.access_pressure IS NULL
                     ),
                     (
                         'crrt.blood_flow',
                         mimiciv_derived.crrt.blood_flow,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.blood_flow IS NULL
                     ),
                     (
                         'crrt.citrate',
                         mimiciv_derived.crrt.citrate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.citrate IS NULL
                     ),
                     (
                         'crrt.current_goal',
                         mimiciv_derived.crrt.current_goal,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.current_goal IS NULL
                     ),
                     (
                         'crrt.dialysate_rate',
                         mimiciv_derived.crrt.dialysate_rate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.dialysate_rate IS NULL
                     ),
                     (
                         'crrt.effluent_pressure',
                         mimiciv_derived.crrt.effluent_pressure,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.effluent_pressure IS NULL
                     ),
                     (
                         'crrt.filter_pressure',
                         mimiciv_derived.crrt.filter_pressure,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.filter_pressure IS NULL
                     ),
                     (
                         'crrt.heparin_dose',
                         mimiciv_derived.crrt.heparin_dose,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.heparin_dose IS NULL
                     ),
                     (
                         'crrt.hourly_patient_fluid_removal',
                         mimiciv_derived.crrt.hourly_patient_fluid_removal,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.hourly_patient_fluid_removal IS NULL
                     ),
                     (
                         'crrt.prefilter_replacement_rate',
                         mimiciv_derived.crrt.prefilter_replacement_rate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.prefilter_replacement_rate IS NULL
                     ),
                     (
                         'crrt.postfilter_replacement_rate',
                         mimiciv_derived.crrt.postfilter_replacement_rate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.postfilter_replacement_rate IS NULL
                     ),
                     (
                         'crrt.replacement_rate',
                         mimiciv_derived.crrt.replacement_rate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.replacement_rate IS NULL
                     ),
                     (
                         'crrt.return_pressure',
                         mimiciv_derived.crrt.return_pressure,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.return_pressure IS NULL
                     ),
                     (
                         'crrt.ultrafiltrate_output',
                         mimiciv_derived.crrt.ultrafiltrate_output,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.crrt.ultrafiltrate_output IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.crrt_mode.',
-                            CAST(mimiciv_derived.crrt.crrt_mode AS TEXT)
-                        ),
+                        'crrt.crrt_mode',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_derived.crrt.crrt_mode AS TEXT),
                         mimiciv_derived.crrt.crrt_mode IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.dialysate_fluid.',
-                            CAST(mimiciv_derived.crrt.dialysate_fluid AS TEXT)
-                        ),
+                        'crrt.dialysate_fluid',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_derived.crrt.dialysate_fluid AS TEXT),
                         mimiciv_derived.crrt.dialysate_fluid IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.heparin_concentration.',
-                            CAST(
-                                mimiciv_derived.crrt.heparin_concentration AS TEXT
-                            )
-                        ),
+                        'crrt.heparin_concentration',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(
+                            mimiciv_derived.crrt.heparin_concentration AS TEXT
+                        ),
                         mimiciv_derived.crrt.heparin_concentration IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.replacement_fluid.',
-                            CAST(mimiciv_derived.crrt.replacement_fluid AS TEXT)
-                        ),
+                        'crrt.replacement_fluid',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_derived.crrt.replacement_fluid AS TEXT),
                         mimiciv_derived.crrt.replacement_fluid IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.system_active.',
-                            CAST(mimiciv_derived.crrt.system_active AS TEXT)
-                        ),
+                        'crrt.system_active',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_derived.crrt.system_active AS TEXT),
                         mimiciv_derived.crrt.system_active IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.clots.',
-                            CAST(mimiciv_derived.crrt.clots AS TEXT)
-                        ),
+                        'crrt.clots',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_derived.crrt.clots AS TEXT),
                         mimiciv_derived.crrt.clots IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.clots_increasing.',
-                            CAST(mimiciv_derived.crrt.clots_increasing AS TEXT)
-                        ),
+                        'crrt.clots_increasing',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_derived.crrt.clots_increasing AS TEXT),
                         mimiciv_derived.crrt.clots_increasing IS NULL
                     ),
                     (
-                        concat(
-                            'crrt.clotted.',
-                            CAST(mimiciv_derived.crrt.clotted AS TEXT)
-                        ),
+                        'crrt.clotted',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_derived.crrt.clotted AS TEXT),
                         mimiciv_derived.crrt.clotted IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     chemistry_aligned AS (
@@ -267,65 +287,82 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT chemistry_aligned.stay_id AS stay_id,
             chemistry_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM chemistry_aligned
             JOIN LATERAL (
                 VALUES (
                         'chemistry.albumin',
                         chemistry_aligned.albumin,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.albumin IS NULL
                     ),
                     (
                         'chemistry.globulin',
                         chemistry_aligned.globulin,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.globulin IS NULL
                     ),
                     (
                         'chemistry.total_protein',
                         chemistry_aligned.total_protein,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.total_protein IS NULL
                     ),
                     (
                         'chemistry.bicarbonate',
                         chemistry_aligned.bicarbonate,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.bicarbonate IS NULL
                     ),
                     (
                         'chemistry.bun',
                         chemistry_aligned.bun,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.bun IS NULL
                     ),
                     (
                         'chemistry.calcium',
                         chemistry_aligned.calcium,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.calcium IS NULL
                     ),
                     (
                         'chemistry.chloride',
                         chemistry_aligned.chloride,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.chloride IS NULL
                     ),
                     (
                         'chemistry.creatinine',
                         chemistry_aligned.creatinine,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.creatinine IS NULL
                     ),
                     (
                         'chemistry.glucose',
                         chemistry_aligned.glucose,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.glucose IS NULL
                     ),
                     (
                         'chemistry.sodium',
                         chemistry_aligned.sodium,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.sodium IS NULL
                     ),
                     (
                         'chemistry.potassium',
                         chemistry_aligned.potassium,
+                        CAST(NULL AS TEXT),
                         chemistry_aligned.potassium IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     complete_blood_count_aligned AS (
@@ -354,60 +391,76 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT complete_blood_count_aligned.stay_id AS stay_id,
             complete_blood_count_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM complete_blood_count_aligned
             JOIN LATERAL (
                 VALUES (
                         'complete_blood_count.hematocrit',
                         complete_blood_count_aligned.hematocrit,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.hematocrit IS NULL
                     ),
                     (
                         'complete_blood_count.hemoglobin',
                         complete_blood_count_aligned.hemoglobin,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.hemoglobin IS NULL
                     ),
                     (
                         'complete_blood_count.mch',
                         complete_blood_count_aligned.mch,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.mch IS NULL
                     ),
                     (
                         'complete_blood_count.mchc',
                         complete_blood_count_aligned.mchc,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.mchc IS NULL
                     ),
                     (
                         'complete_blood_count.mcv',
                         complete_blood_count_aligned.mcv,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.mcv IS NULL
                     ),
                     (
                         'complete_blood_count.platelet',
                         complete_blood_count_aligned.platelet,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.platelet IS NULL
                     ),
                     (
                         'complete_blood_count.rbc',
                         complete_blood_count_aligned.rbc,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.rbc IS NULL
                     ),
                     (
                         'complete_blood_count.rdw',
                         complete_blood_count_aligned.rdw,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.rdw IS NULL
                     ),
                     (
                         'complete_blood_count.rdwsd',
                         complete_blood_count_aligned.rdwsd,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.rdwsd IS NULL
                     ),
                     (
                         'complete_blood_count.wbc',
                         complete_blood_count_aligned.wbc,
+                        CAST(NULL AS TEXT),
                         complete_blood_count_aligned.wbc IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     blood_differential_aligned AS (
@@ -442,90 +495,112 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT blood_differential_aligned.stay_id AS stay_id,
             blood_differential_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM blood_differential_aligned
             JOIN LATERAL (
                 VALUES (
                         'blood_differential.wbc',
                         blood_differential_aligned.wbc,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.wbc IS NULL
                     ),
                     (
                         'blood_differential.basophils_abs',
                         blood_differential_aligned.basophils_abs,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.basophils_abs IS NULL
                     ),
                     (
                         'blood_differential.eosinophils_abs',
                         blood_differential_aligned.eosinophils_abs,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.eosinophils_abs IS NULL
                     ),
                     (
                         'blood_differential.lymphocytes_abs',
                         blood_differential_aligned.lymphocytes_abs,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.lymphocytes_abs IS NULL
                     ),
                     (
                         'blood_differential.monocytes_abs',
                         blood_differential_aligned.monocytes_abs,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.monocytes_abs IS NULL
                     ),
                     (
                         'blood_differential.neutrophils_abs',
                         blood_differential_aligned.neutrophils_abs,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.neutrophils_abs IS NULL
                     ),
                     (
                         'blood_differential.basophils',
                         blood_differential_aligned.basophils,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.basophils IS NULL
                     ),
                     (
                         'blood_differential.eosinophils',
                         blood_differential_aligned.eosinophils,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.eosinophils IS NULL
                     ),
                     (
                         'blood_differential.lymphocytes',
                         blood_differential_aligned.lymphocytes,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.lymphocytes IS NULL
                     ),
                     (
                         'blood_differential.monocytes',
                         blood_differential_aligned.monocytes,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.monocytes IS NULL
                     ),
                     (
                         'blood_differential.neutrophils',
                         blood_differential_aligned.neutrophils,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.neutrophils IS NULL
                     ),
                     (
                         'blood_differential.atypical_lymphocytes',
                         blood_differential_aligned.atypical_lymphocytes,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.atypical_lymphocytes IS NULL
                     ),
                     (
                         'blood_differential.bands',
                         blood_differential_aligned.bands,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.bands IS NULL
                     ),
                     (
                         'blood_differential.immature_granulocytes',
                         blood_differential_aligned.immature_granulocytes,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.immature_granulocytes IS NULL
                     ),
                     (
                         'blood_differential.metamyelocytes',
                         blood_differential_aligned.metamyelocytes,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.metamyelocytes IS NULL
                     ),
                     (
                         'blood_differential.nrbc',
                         blood_differential_aligned.nrbc,
+                        CAST(NULL AS TEXT),
                         blood_differential_aligned.nrbc IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     bg_aligned AS (
@@ -567,121 +642,160 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT bg_aligned.stay_id AS stay_id,
             bg_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM bg_aligned
             JOIN LATERAL (
-                VALUES ('bg.so2', bg_aligned.so2, bg_aligned.so2 IS NULL),
-                    ('bg.po2', bg_aligned.po2, bg_aligned.po2 IS NULL),
+                VALUES (
+                        'bg.so2',
+                        bg_aligned.so2,
+                        CAST(NULL AS TEXT),
+                        bg_aligned.so2 IS NULL
+                    ),
+                    (
+                        'bg.po2',
+                        bg_aligned.po2,
+                        CAST(NULL AS TEXT),
+                        bg_aligned.po2 IS NULL
+                    ),
                     (
                         'bg.pco2',
                         bg_aligned.pco2,
+                        CAST(NULL AS TEXT),
                         bg_aligned.pco2 IS NULL
                     ),
                     (
                         'bg.fio2_chartevents',
                         bg_aligned.fio2_chartevents,
+                        CAST(NULL AS TEXT),
                         bg_aligned.fio2_chartevents IS NULL
                     ),
                     (
                         'bg.fio2',
                         bg_aligned.fio2,
+                        CAST(NULL AS TEXT),
                         bg_aligned.fio2 IS NULL
                     ),
                     (
                         'bg.aado2',
                         bg_aligned.aado2,
+                        CAST(NULL AS TEXT),
                         bg_aligned.aado2 IS NULL
                     ),
                     (
                         'bg.aado2_calc',
                         bg_aligned.aado2_calc,
+                        CAST(NULL AS TEXT),
                         bg_aligned.aado2_calc IS NULL
                     ),
                     (
                         'bg.pao2fio2ratio',
                         bg_aligned.pao2fio2ratio,
+                        CAST(NULL AS TEXT),
                         bg_aligned.pao2fio2ratio IS NULL
                     ),
-                    ('bg.ph', bg_aligned.ph, bg_aligned.ph IS NULL),
+                    (
+                        'bg.ph',
+                        bg_aligned.ph,
+                        CAST(NULL AS TEXT),
+                        bg_aligned.ph IS NULL
+                    ),
                     (
                         'bg.baseexcess',
                         bg_aligned.baseexcess,
+                        CAST(NULL AS TEXT),
                         bg_aligned.baseexcess IS NULL
                     ),
                     (
                         'bg.bicarbonate',
                         bg_aligned.bicarbonate,
+                        CAST(NULL AS TEXT),
                         bg_aligned.bicarbonate IS NULL
                     ),
                     (
                         'bg.totalco2',
                         bg_aligned.totalco2,
+                        CAST(NULL AS TEXT),
                         bg_aligned.totalco2 IS NULL
                     ),
                     (
                         'bg.hematocrit',
                         bg_aligned.hematocrit,
+                        CAST(NULL AS TEXT),
                         bg_aligned.hematocrit IS NULL
                     ),
                     (
                         'bg.hemoglobin',
                         bg_aligned.hemoglobin,
+                        CAST(NULL AS TEXT),
                         bg_aligned.hemoglobin IS NULL
                     ),
                     (
                         'bg.carboxyhemoglobin',
                         bg_aligned.carboxyhemoglobin,
+                        CAST(NULL AS TEXT),
                         bg_aligned.carboxyhemoglobin IS NULL
                     ),
                     (
                         'bg.methemoglobin',
                         bg_aligned.methemoglobin,
+                        CAST(NULL AS TEXT),
                         bg_aligned.methemoglobin IS NULL
                     ),
                     (
                         'bg.chloride',
                         bg_aligned.chloride,
+                        CAST(NULL AS TEXT),
                         bg_aligned.chloride IS NULL
                     ),
                     (
                         'bg.calcium',
                         bg_aligned.calcium,
+                        CAST(NULL AS TEXT),
                         bg_aligned.calcium IS NULL
                     ),
                     (
                         'bg.temperature',
                         bg_aligned.temperature,
+                        CAST(NULL AS TEXT),
                         bg_aligned.temperature IS NULL
                     ),
                     (
                         'bg.potassium',
                         bg_aligned.potassium,
+                        CAST(NULL AS TEXT),
                         bg_aligned.potassium IS NULL
                     ),
                     (
                         'bg.sodium',
                         bg_aligned.sodium,
+                        CAST(NULL AS TEXT),
                         bg_aligned.sodium IS NULL
                     ),
                     (
                         'bg.lactate',
                         bg_aligned.lactate,
+                        CAST(NULL AS TEXT),
                         bg_aligned.lactate IS NULL
                     ),
                     (
                         'bg.glucose',
                         bg_aligned.glucose,
+                        CAST(NULL AS TEXT),
                         bg_aligned.glucose IS NULL
                     ),
                     (
-                        concat(
-                            'bg.specimen.',
-                            CAST(bg_aligned.specimen AS TEXT)
-                        ),
+                        'bg.specimen',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(bg_aligned.specimen AS TEXT),
                         bg_aligned.specimen IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     cardiac_marker_aligned AS (
@@ -703,25 +817,34 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT cardiac_marker_aligned.stay_id AS stay_id,
             cardiac_marker_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM cardiac_marker_aligned
             JOIN LATERAL (
                 VALUES (
                         'cardiac_marker.troponin_t',
                         cardiac_marker_aligned.troponin_t,
+                        CAST(NULL AS TEXT),
                         cardiac_marker_aligned.troponin_t IS NULL
                     ),
                     (
                         'cardiac_marker.ck_mb',
                         cardiac_marker_aligned.ck_mb,
+                        CAST(NULL AS TEXT),
                         cardiac_marker_aligned.ck_mb IS NULL
                     ),
                     (
                         'cardiac_marker.ntprobnp',
                         cardiac_marker_aligned.ntprobnp,
+                        CAST(NULL AS TEXT),
                         cardiac_marker_aligned.ntprobnp IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     coagulation_aligned AS (
@@ -746,40 +869,52 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT coagulation_aligned.stay_id AS stay_id,
             coagulation_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM coagulation_aligned
             JOIN LATERAL (
                 VALUES (
                         'coagulation.d_dimer',
                         coagulation_aligned.d_dimer,
+                        CAST(NULL AS TEXT),
                         coagulation_aligned.d_dimer IS NULL
                     ),
                     (
                         'coagulation.fibrinogen',
                         coagulation_aligned.fibrinogen,
+                        CAST(NULL AS TEXT),
                         coagulation_aligned.fibrinogen IS NULL
                     ),
                     (
                         'coagulation.thrombin',
                         coagulation_aligned.thrombin,
+                        CAST(NULL AS TEXT),
                         coagulation_aligned.thrombin IS NULL
                     ),
                     (
                         'coagulation.inr',
                         coagulation_aligned.inr,
+                        CAST(NULL AS TEXT),
                         coagulation_aligned.inr IS NULL
                     ),
                     (
                         'coagulation.pt',
                         coagulation_aligned.pt,
+                        CAST(NULL AS TEXT),
                         coagulation_aligned.pt IS NULL
                     ),
                     (
                         'coagulation.ptt',
                         coagulation_aligned.ptt,
+                        CAST(NULL AS TEXT),
                         coagulation_aligned.ptt IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     enzyme_aligned AS (
@@ -809,190 +944,232 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT enzyme_aligned.stay_id AS stay_id,
             enzyme_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM enzyme_aligned
             JOIN LATERAL (
                 VALUES (
                         'enzyme.alt',
                         enzyme_aligned.alt,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.alt IS NULL
                     ),
                     (
                         'enzyme.alp',
                         enzyme_aligned.alp,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.alp IS NULL
                     ),
                     (
                         'enzyme.ast',
                         enzyme_aligned.ast,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.ast IS NULL
                     ),
                     (
                         'enzyme.amylase',
                         enzyme_aligned.amylase,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.amylase IS NULL
                     ),
                     (
                         'enzyme.bilirubin_total',
                         enzyme_aligned.bilirubin_total,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.bilirubin_total IS NULL
                     ),
                     (
                         'enzyme.bilirubin_direct',
                         enzyme_aligned.bilirubin_direct,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.bilirubin_direct IS NULL
                     ),
                     (
                         'enzyme.bilirubin_indirect',
                         enzyme_aligned.bilirubin_indirect,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.bilirubin_indirect IS NULL
                     ),
                     (
                         'enzyme.ck_cpk',
                         enzyme_aligned.ck_cpk,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.ck_cpk IS NULL
                     ),
                     (
                         'enzyme.ck_mb',
                         enzyme_aligned.ck_mb,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.ck_mb IS NULL
                     ),
                     (
                         'enzyme.ggt',
                         enzyme_aligned.ggt,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.ggt IS NULL
                     ),
                     (
                         'enzyme.ld_ldh',
                         enzyme_aligned.ld_ldh,
+                        CAST(NULL AS TEXT),
                         enzyme_aligned.ld_ldh IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     icp_tokenized AS (
         SELECT mimiciv_derived.icp.stay_id AS stay_id,
             mimiciv_derived.icp.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM mimiciv_derived.icp
             JOIN LATERAL (
                 VALUES (
                         'icp.icp',
                         mimiciv_derived.icp.icp,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.icp.icp IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     urine_output_tokenized AS (
         SELECT mimiciv_derived.urine_output.stay_id AS stay_id,
             mimiciv_derived.urine_output.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM mimiciv_derived.urine_output
             JOIN LATERAL (
                 VALUES (
                         'urine_output.urineoutput',
                         mimiciv_derived.urine_output.urineoutput,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.urine_output.urineoutput IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     ventilator_setting_tokenized AS (
         SELECT mimiciv_derived.ventilator_setting.stay_id AS stay_id,
             mimiciv_derived.ventilator_setting.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM mimiciv_derived.ventilator_setting
             JOIN LATERAL (
                 VALUES (
                         'ventilator_setting.respiratory_rate_set',
                         mimiciv_derived.ventilator_setting.respiratory_rate_set,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.respiratory_rate_set IS NULL
                     ),
                     (
                         'ventilator_setting.respiratory_rate_total',
                         mimiciv_derived.ventilator_setting.respiratory_rate_total,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.respiratory_rate_total IS NULL
                     ),
                     (
                         'ventilator_setting.respiratory_rate_spontaneous',
                         mimiciv_derived.ventilator_setting.respiratory_rate_spontaneous,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.respiratory_rate_spontaneous IS NULL
                     ),
                     (
                         'ventilator_setting.minute_volume',
                         mimiciv_derived.ventilator_setting.minute_volume,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.minute_volume IS NULL
                     ),
                     (
                         'ventilator_setting.tidal_volume_set',
                         mimiciv_derived.ventilator_setting.tidal_volume_set,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.tidal_volume_set IS NULL
                     ),
                     (
                         'ventilator_setting.tidal_volume_observed',
                         mimiciv_derived.ventilator_setting.tidal_volume_observed,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.tidal_volume_observed IS NULL
                     ),
                     (
                         'ventilator_setting.tidal_volume_spontaneous',
                         mimiciv_derived.ventilator_setting.tidal_volume_spontaneous,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.tidal_volume_spontaneous IS NULL
                     ),
                     (
                         'ventilator_setting.plateau_pressure',
                         mimiciv_derived.ventilator_setting.plateau_pressure,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.plateau_pressure IS NULL
                     ),
                     (
                         'ventilator_setting.peep',
                         mimiciv_derived.ventilator_setting.peep,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.peep IS NULL
                     ),
                     (
                         'ventilator_setting.fio2',
                         mimiciv_derived.ventilator_setting.fio2,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.fio2 IS NULL
                     ),
                     (
                         'ventilator_setting.flow_rate',
                         mimiciv_derived.ventilator_setting.flow_rate,
+                        CAST(NULL AS TEXT),
                         mimiciv_derived.ventilator_setting.flow_rate IS NULL
                     ),
                     (
-                        concat(
-                            'ventilator_setting.ventilator_mode.',
-                            CAST(
-                                mimiciv_derived.ventilator_setting.ventilator_mode AS TEXT
-                            )
-                        ),
+                        'ventilator_setting.ventilator_mode',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(
+                            mimiciv_derived.ventilator_setting.ventilator_mode AS TEXT
+                        ),
                         mimiciv_derived.ventilator_setting.ventilator_mode IS NULL
                     ),
                     (
-                        concat(
-                            'ventilator_setting.ventilator_mode_hamilton.',
-                            CAST(
-                                mimiciv_derived.ventilator_setting.ventilator_mode_hamilton AS TEXT
-                            )
-                        ),
+                        'ventilator_setting.ventilator_mode_hamilton',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(
+                            mimiciv_derived.ventilator_setting.ventilator_mode_hamilton AS TEXT
+                        ),
                         mimiciv_derived.ventilator_setting.ventilator_mode_hamilton IS NULL
                     ),
                     (
-                        concat(
-                            'ventilator_setting.ventilator_type.',
-                            CAST(
-                                mimiciv_derived.ventilator_setting.ventilator_type AS TEXT
-                            )
-                        ),
+                        'ventilator_setting.ventilator_type',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(
+                            mimiciv_derived.ventilator_setting.ventilator_type AS TEXT
+                        ),
                         mimiciv_derived.ventilator_setting.ventilator_type IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     inflammation_aligned AS (
@@ -1012,15 +1189,22 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT inflammation_aligned.stay_id AS stay_id,
             inflammation_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM inflammation_aligned
             JOIN LATERAL (
                 VALUES (
                         'inflammation.crp',
                         inflammation_aligned.crp,
+                        CAST(NULL AS TEXT),
                         inflammation_aligned.crp IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     rhythm_aligned AS (
@@ -1042,44 +1226,50 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT rhythm_aligned.stay_id AS stay_id,
             rhythm_aligned.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM rhythm_aligned
             JOIN LATERAL (
                 VALUES (
-                        concat(
-                            'rhythm.heart_rhythm.',
-                            CAST(rhythm_aligned.heart_rhythm AS TEXT)
-                        ),
+                        'rhythm.heart_rhythm',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(rhythm_aligned.heart_rhythm AS TEXT),
                         rhythm_aligned.heart_rhythm IS NULL
                     ),
                     (
-                        concat(
-                            'rhythm.ectopy_type.',
-                            CAST(rhythm_aligned.ectopy_type AS TEXT)
-                        ),
+                        'rhythm.ectopy_type',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(rhythm_aligned.ectopy_type AS TEXT),
                         rhythm_aligned.ectopy_type IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     bcresults_tokenized AS (
         SELECT mimiciv_local.bcresults.stay_id AS stay_id,
             mimiciv_local.bcresults.charttime AS charttime,
             tokens.token_label AS token_label,
-            tokens.token_value AS token_value
+            tokens.token_value_numeric AS token_value_numeric,
+            tokens.token_value_categorical AS token_value_categorical
         FROM mimiciv_local.bcresults
             JOIN LATERAL (
                 VALUES (
-                        concat(
-                            'bcresults.result.',
-                            CAST(mimiciv_local.bcresults.result AS TEXT)
-                        ),
+                        'bcresults.result',
                         CAST(NULL AS DOUBLE PRECISION),
+                        CAST(mimiciv_local.bcresults.result AS TEXT),
                         mimiciv_local.bcresults.result IS NULL
                     )
-            ) AS tokens (token_label, token_value, token_null) ON true
+            ) AS tokens (
+                token_label,
+                token_value_numeric,
+                token_value_categorical,
+                token_null
+            ) ON true
         WHERE NOT tokens.token_null
     ),
     hour_events AS (
@@ -1112,28 +1302,32 @@ CREATE TABLE mimiciv_local.tokenevents AS (
                         )
                 )
             ) AS token_label,
-            CAST(NULL AS DOUBLE PRECISION) AS token_value
+            CAST(NULL AS DOUBLE PRECISION) AS token_value_numeric,
+            CAST(NULL AS TEXT) AS token_value_categorical
         FROM mimiciv_derived.icustay_detail
     ),
     admission_events AS (
         SELECT mimiciv_derived.icustay_detail.stay_id AS stay_id,
             mimiciv_derived.icustay_detail.icu_intime AS charttime,
             'admission' AS token_label,
-            CAST(NULL AS DOUBLE PRECISION) AS token_value
+            CAST(NULL AS DOUBLE PRECISION) AS token_value_numeric,
+            CAST(NULL AS TEXT) AS token_value_categorical
         FROM mimiciv_derived.icustay_detail
     ),
     discharge_events AS (
         SELECT mimiciv_derived.icustay_detail.stay_id AS stay_id,
             mimiciv_derived.icustay_detail.icu_outtime AS charttime,
             'discharge' AS token_label,
-            CAST(NULL AS DOUBLE PRECISION) AS token_value
+            CAST(NULL AS DOUBLE PRECISION) AS token_value_numeric,
+            CAST(NULL AS TEXT) AS token_value_categorical
         FROM mimiciv_derived.icustay_detail
     ),
     mort_events AS (
         SELECT mimiciv_derived.icustay_detail.stay_id AS stay_id,
             mimiciv_derived.icustay_detail.dischtime AS charttime,
             'mort' AS token_label,
-            CAST(NULL AS DOUBLE PRECISION) AS token_value
+            CAST(NULL AS DOUBLE PRECISION) AS token_value_numeric,
+            CAST(NULL AS TEXT) AS token_value_categorical
         FROM mimiciv_derived.icustay_detail
         WHERE mimiciv_derived.icustay_detail.hospital_expire_flag = 1
     ),
@@ -1141,130 +1335,156 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT vitalsign_tokenized.stay_id AS stay_id,
             vitalsign_tokenized.charttime AS charttime,
             vitalsign_tokenized.token_label AS token_label,
-            vitalsign_tokenized.token_value AS token_value
+            vitalsign_tokenized.token_value_numeric AS token_value_numeric,
+            vitalsign_tokenized.token_value_categorical AS token_value_categorical
         FROM vitalsign_tokenized
         UNION ALL
         SELECT crrt_tokenized.stay_id AS stay_id,
             crrt_tokenized.charttime AS charttime,
             crrt_tokenized.token_label AS token_label,
-            crrt_tokenized.token_value AS token_value
+            crrt_tokenized.token_value_numeric AS token_value_numeric,
+            crrt_tokenized.token_value_categorical AS token_value_categorical
         FROM crrt_tokenized
         UNION ALL
         SELECT chemistry_tokenized.stay_id AS stay_id,
             chemistry_tokenized.charttime AS charttime,
             chemistry_tokenized.token_label AS token_label,
-            chemistry_tokenized.token_value AS token_value
+            chemistry_tokenized.token_value_numeric AS token_value_numeric,
+            chemistry_tokenized.token_value_categorical AS token_value_categorical
         FROM chemistry_tokenized
         UNION ALL
         SELECT complete_blood_count_tokenized.stay_id AS stay_id,
             complete_blood_count_tokenized.charttime AS charttime,
             complete_blood_count_tokenized.token_label AS token_label,
-            complete_blood_count_tokenized.token_value AS token_value
+            complete_blood_count_tokenized.token_value_numeric AS token_value_numeric,
+            complete_blood_count_tokenized.token_value_categorical AS token_value_categorical
         FROM complete_blood_count_tokenized
         UNION ALL
         SELECT blood_differential_tokenized.stay_id AS stay_id,
             blood_differential_tokenized.charttime AS charttime,
             blood_differential_tokenized.token_label AS token_label,
-            blood_differential_tokenized.token_value AS token_value
+            blood_differential_tokenized.token_value_numeric AS token_value_numeric,
+            blood_differential_tokenized.token_value_categorical AS token_value_categorical
         FROM blood_differential_tokenized
         UNION ALL
         SELECT bg_tokenized.stay_id AS stay_id,
             bg_tokenized.charttime AS charttime,
             bg_tokenized.token_label AS token_label,
-            bg_tokenized.token_value AS token_value
+            bg_tokenized.token_value_numeric AS token_value_numeric,
+            bg_tokenized.token_value_categorical AS token_value_categorical
         FROM bg_tokenized
         UNION ALL
         SELECT cardiac_marker_tokenized.stay_id AS stay_id,
             cardiac_marker_tokenized.charttime AS charttime,
             cardiac_marker_tokenized.token_label AS token_label,
-            cardiac_marker_tokenized.token_value AS token_value
+            cardiac_marker_tokenized.token_value_numeric AS token_value_numeric,
+            cardiac_marker_tokenized.token_value_categorical AS token_value_categorical
         FROM cardiac_marker_tokenized
         UNION ALL
         SELECT coagulation_tokenized.stay_id AS stay_id,
             coagulation_tokenized.charttime AS charttime,
             coagulation_tokenized.token_label AS token_label,
-            coagulation_tokenized.token_value AS token_value
+            coagulation_tokenized.token_value_numeric AS token_value_numeric,
+            coagulation_tokenized.token_value_categorical AS token_value_categorical
         FROM coagulation_tokenized
         UNION ALL
         SELECT enzyme_tokenized.stay_id AS stay_id,
             enzyme_tokenized.charttime AS charttime,
             enzyme_tokenized.token_label AS token_label,
-            enzyme_tokenized.token_value AS token_value
+            enzyme_tokenized.token_value_numeric AS token_value_numeric,
+            enzyme_tokenized.token_value_categorical AS token_value_categorical
         FROM enzyme_tokenized
         UNION ALL
         SELECT icp_tokenized.stay_id AS stay_id,
             icp_tokenized.charttime AS charttime,
             icp_tokenized.token_label AS token_label,
-            icp_tokenized.token_value AS token_value
+            icp_tokenized.token_value_numeric AS token_value_numeric,
+            icp_tokenized.token_value_categorical AS token_value_categorical
         FROM icp_tokenized
         UNION ALL
         SELECT urine_output_tokenized.stay_id AS stay_id,
             urine_output_tokenized.charttime AS charttime,
             urine_output_tokenized.token_label AS token_label,
-            urine_output_tokenized.token_value AS token_value
+            urine_output_tokenized.token_value_numeric AS token_value_numeric,
+            urine_output_tokenized.token_value_categorical AS token_value_categorical
         FROM urine_output_tokenized
         UNION ALL
         SELECT ventilator_setting_tokenized.stay_id AS stay_id,
             ventilator_setting_tokenized.charttime AS charttime,
             ventilator_setting_tokenized.token_label AS token_label,
-            ventilator_setting_tokenized.token_value AS token_value
+            ventilator_setting_tokenized.token_value_numeric AS token_value_numeric,
+            ventilator_setting_tokenized.token_value_categorical AS token_value_categorical
         FROM ventilator_setting_tokenized
         UNION ALL
         SELECT inflammation_tokenized.stay_id AS stay_id,
             inflammation_tokenized.charttime AS charttime,
             inflammation_tokenized.token_label AS token_label,
-            inflammation_tokenized.token_value AS token_value
+            inflammation_tokenized.token_value_numeric AS token_value_numeric,
+            inflammation_tokenized.token_value_categorical AS token_value_categorical
         FROM inflammation_tokenized
         UNION ALL
         SELECT rhythm_tokenized.stay_id AS stay_id,
             rhythm_tokenized.charttime AS charttime,
             rhythm_tokenized.token_label AS token_label,
-            rhythm_tokenized.token_value AS token_value
+            rhythm_tokenized.token_value_numeric AS token_value_numeric,
+            rhythm_tokenized.token_value_categorical AS token_value_categorical
         FROM rhythm_tokenized
         UNION ALL
         SELECT bcresults_tokenized.stay_id AS stay_id,
             bcresults_tokenized.charttime AS charttime,
             bcresults_tokenized.token_label AS token_label,
-            bcresults_tokenized.token_value AS token_value
+            bcresults_tokenized.token_value_numeric AS token_value_numeric,
+            bcresults_tokenized.token_value_categorical AS token_value_categorical
         FROM bcresults_tokenized
         UNION ALL
         SELECT hour_events.stay_id AS stay_id,
             hour_events.charttime AS charttime,
             hour_events.token_label AS token_label,
-            hour_events.token_value AS token_value
+            hour_events.token_value_numeric AS token_value_numeric,
+            hour_events.token_value_categorical AS token_value_categorical
         FROM hour_events
         UNION ALL
         SELECT admission_events.stay_id AS stay_id,
             admission_events.charttime AS charttime,
             admission_events.token_label AS token_label,
-            admission_events.token_value AS token_value
+            admission_events.token_value_numeric AS token_value_numeric,
+            admission_events.token_value_categorical AS token_value_categorical
         FROM admission_events
         UNION ALL
         SELECT discharge_events.stay_id AS stay_id,
             discharge_events.charttime AS charttime,
             discharge_events.token_label AS token_label,
-            discharge_events.token_value AS token_value
+            discharge_events.token_value_numeric AS token_value_numeric,
+            discharge_events.token_value_categorical AS token_value_categorical
         FROM discharge_events
         UNION ALL
         SELECT mort_events.stay_id AS stay_id,
             mort_events.charttime AS charttime,
             mort_events.token_label AS token_label,
-            mort_events.token_value AS token_value
+            mort_events.token_value_numeric AS token_value_numeric,
+            mort_events.token_value_categorical AS token_value_categorical
         FROM mort_events
     ),
     token_values AS (
         SELECT union_tokenized.stay_id AS stay_id,
             union_tokenized.charttime AS charttime,
             union_tokenized.token_label AS token_label,
-            union_tokenized.token_value AS token_value,
-            CAST(
-                floor(
-                    percent_rank() OVER (
-                        PARTITION BY union_tokenized.token_label
-                        ORDER BY union_tokenized.token_value
-                    ) * 10
-                ) AS INTEGER
-            ) AS token_value_disc
+            coalesce(
+                CASE
+                    WHEN (union_tokenized.token_value_numeric IS NOT NULL) THEN concat(
+                        'magnitude.',
+                        CAST(
+                            floor(
+                                percent_rank() OVER (
+                                    PARTITION BY union_tokenized.token_label
+                                    ORDER BY union_tokenized.token_value_numeric
+                                ) * 10
+                            ) AS TEXT
+                        )
+                    )
+                END,
+                union_tokenized.token_value_categorical
+            ) AS token_value
         FROM union_tokenized
         ORDER BY union_tokenized.stay_id,
             union_tokenized.charttime
@@ -1273,8 +1493,7 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         SELECT med_values.stay_id AS stay_id,
             med_values.charttime AS charttime,
             med_values.token_label AS token_label,
-            med_values.dose AS token_value,
-            med_values.token_value_disc AS token_value_disc,
+            med_values.token_value AS token_value,
             med_values.uom_label AS uom_label
         FROM med_values
         UNION ALL
@@ -1282,7 +1501,6 @@ CREATE TABLE mimiciv_local.tokenevents AS (
             token_values.charttime AS charttime,
             token_values.token_label AS token_label,
             token_values.token_value AS token_value,
-            token_values.token_value_disc AS token_value_disc,
             NULL AS uom_label
         FROM token_values
     ),
@@ -1291,13 +1509,12 @@ CREATE TABLE mimiciv_local.tokenevents AS (
             med_derived_events_combined.charttime AS charttime,
             med_derived_events_combined.token_label AS token_label,
             med_derived_events_combined.token_value AS token_value,
-            med_derived_events_combined.token_value_disc AS token_value_disc,
             med_derived_events_combined.uom_label AS uom_label,
             row_number() OVER (
                 PARTITION BY med_derived_events_combined.stay_id,
                 med_derived_events_combined.charttime
                 ORDER BY med_derived_events_combined.token_label,
-                    med_derived_events_combined.token_value_disc
+                    med_derived_events_combined.token_value
             ) AS event_idx
         FROM med_derived_events_combined
     ),
@@ -1319,10 +1536,7 @@ CREATE TABLE mimiciv_local.tokenevents AS (
         UNION ALL
         SELECT numbered_events.stay_id AS stay_id,
             numbered_events.charttime AS charttime,
-            concat(
-                'magnitude.',
-                CAST(numbered_events.token_value_disc AS TEXT)
-            ) AS token,
+            numbered_events.token_value AS token,
             numbered_events.event_idx AS event_idx,
             3 AS sort_order
         FROM numbered_events

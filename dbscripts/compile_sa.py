@@ -1,4 +1,5 @@
 # NOTE: unsafe sql query construction
+# TODO: this is dropping categorical values! (seems to be adding magnitudes)
 from sqlalchemy import (
     create_engine,
     Table,
@@ -127,16 +128,20 @@ def build_table_stmt_onetime(tts: TableTokenizationSpec, table: Table):
     categorical_cols = tts.get_categorical_columns(table)
 
     tokenization_data_expr = [
-        (literal(f"{tts.table_name}.{cname}"), table.c[cname], table.c[cname] == None)
+        (
+            literal(f"{tts.table_name}.{cname}"),
+            table.c[cname],
+            cast(None, TEXT),
+            table.c[cname] == None,
+        )
         for cname in numeric_cols
     ]
 
     tokenization_data_expr += [
         (
-            func.concat(
-                literal(f"{tts.table_name}.{cname}."), cast(table.c[cname], TEXT)
-            ),
+            literal(f"{tts.table_name}.{cname}"),
             cast(None, DOUBLE_PRECISION),
+            cast(table.c[cname], TEXT),
             table.c[cname] == None,
         )
         for cname in categorical_cols
@@ -145,16 +150,20 @@ def build_table_stmt_onetime(tts: TableTokenizationSpec, table: Table):
     tokenization_data_expr += [
         (
             func.concat(
-                literal(f"{tts.table_name}.{cname}."), cast(table.c[mod_cname], String)
+                literal(f"{tts.table_name}.{cname}"), cast(table.c[mod_cname], String)
             ),
             table.c[cname],
+            cast(None, TEXT),
             table.c[cname] == None,
         )
         for cname, mod_cname in tts.modulated_cols.items()
     ]
 
     tokens = values(
-        column("token_label"), column("token_value"), column("token_null")
+        column("token_label"),
+        column("token_value_numeric"),
+        column("token_value_categorical"),
+        column("token_null"),
     ).data(tokenization_data_expr)
     tokens = lateral(tokens).alias("tokens")
 
@@ -163,7 +172,8 @@ def build_table_stmt_onetime(tts: TableTokenizationSpec, table: Table):
             table.c.stay_id,
             table.c.charttime,
             tokens.c.token_label,
-            tokens.c.token_value,
+            tokens.c.token_value_numeric,
+            tokens.c.token_value_categorical,
         )
         .select_from(table.join(tokens, true()))
         .where(~tokens.c.token_null)
@@ -187,15 +197,19 @@ def build_table_stmt_infusion(ttd: TableTokenizationSpec, table: Table):
                 literal(f"{tts.table_name}.rate"),
                 table.c[ncol]
                 / (extract("epoch", table.c.endtime - table.c.starttime) / 3600),
+                cast(None, TEXT),
             )
         )
 
         tokenization_data_expr.append(
-            (table.c.endtime, literal(f"{tts.table_name}.rate"), 0.0)
+            (table.c.endtime, literal(f"{tts.table_name}.rate"), 0.0, cast(None, TEXT))
         )
 
     tokens = values(
-        column("charttime"), column("token_label"), column("token_value")
+        column("charttime"),
+        column("token_label"),
+        column("token_value_numeric"),
+        column("token_value_categorical"),
     ).data(tokenization_data_expr)
     tokens = lateral(tokens).alias("tokens")
 
@@ -204,7 +218,8 @@ def build_table_stmt_infusion(ttd: TableTokenizationSpec, table: Table):
             table.c.stay_id,
             tokens.c.charttime,
             tokens.c.token_label,
-            tokens.c.token_value,
+            tokens.c.token_value_numeric,
+            tokens.c.token_value_categorical,
         )
         .select_from(table.join(tokens, true()))
         .cte(f"{tts.table_name}_tokenized")
@@ -280,7 +295,8 @@ if __name__ == "__main__":
                     ),
                 ),
             ).label("token_label"),
-            cast(None, DOUBLE_PRECISION).label("token_value"),
+            cast(None, DOUBLE_PRECISION).label("token_value_numeric"),
+            cast(None, TEXT).label("token_value_categorical"),
         )
         .select_from(icustays)
         .cte("hour_events")
@@ -291,7 +307,8 @@ if __name__ == "__main__":
             icustays.c.stay_id,
             icustays.c.icu_intime.label("charttime"),
             literal("admission").label("token_label"),
-            cast(None, DOUBLE_PRECISION).label("token_value"),
+            cast(None, DOUBLE_PRECISION).label("token_value_numeric"),
+            cast(None, TEXT).label("token_value_categorical"),
         )
         .select_from(icustays)
         .cte("admission_events")
@@ -302,7 +319,8 @@ if __name__ == "__main__":
             icustays.c.stay_id,
             icustays.c.icu_outtime.label("charttime"),
             literal("discharge").label("token_label"),
-            cast(None, DOUBLE_PRECISION).label("token_value"),
+            cast(None, DOUBLE_PRECISION).label("token_value_numeric"),
+            cast(None, TEXT).label("token_value_categorical"),
         )
         .select_from(icustays)
         .cte("discharge_events")
@@ -313,7 +331,8 @@ if __name__ == "__main__":
             icustays.c.stay_id,
             icustays.c.dischtime.label("charttime"),
             literal("mort").label("token_label"),
-            cast(None, DOUBLE_PRECISION).label("token_value"),
+            cast(None, DOUBLE_PRECISION).label("token_value_numeric"),
+            cast(None, TEXT).label("token_value_categorical"),
         )
         .select_from(icustays)
         .where(icustays.c.hospital_expire_flag == 1)
@@ -329,7 +348,8 @@ if __name__ == "__main__":
                 cte.c.stay_id,
                 cte.c.charttime,
                 cte.c.token_label,
-                cte.c.token_value,
+                cte.c.token_value_numeric,
+                cte.c.token_value_categorical,
             )
             for cte in ctes_for_union
         ]
@@ -349,16 +369,25 @@ if __name__ == "__main__":
             union_cte.c.stay_id,
             union_cte.c.charttime,
             union_cte.c.token_label,
-            union_cte.c.token_value,
-            func.floor(
-                func.percent_rank().over(
-                    partition_by=union_cte.c.token_label,
-                    order_by=union_cte.c.token_value,
-                )
-                * PERCENTILE_MULTIPLIER
-            )
-            .cast(INTEGER)
-            .label("token_value_disc"),
+            func.coalesce(
+                case(
+                    (
+                        (union_cte.c.token_value_numeric != None),
+                        func.concat(  # TODO: this first expression is never NULL!!
+                            literal("magnitude."),
+                            func.floor(
+                                func.percent_rank().over(
+                                    partition_by=union_cte.c.token_label,
+                                    order_by=union_cte.c.token_value_numeric,
+                                )
+                                * PERCENTILE_MULTIPLIER
+                            ).cast(TEXT),
+                        ),
+                    ),
+                    else_=None,
+                ),
+                union_cte.c.token_value_categorical,
+            ).label("token_value"),
         )
         .order_by("stay_id", "charttime")
         .cte("token_values")
@@ -405,15 +434,16 @@ if __name__ == "__main__":
         meds_cte.c.token_label,
         meds_cte.c.uom_label,
         meds_cte.c.dose,
-        func.floor(
-            func.percent_rank().over(
-                partition_by=(meds_cte.c.token_label, meds_cte.c.uom_label),
-                order_by=meds_cte.c.dose,
-            )
-            * PERCENTILE_MULTIPLIER
-        )
-        .cast(INTEGER)
-        .label("token_value_disc"),
+        func.concat(
+            literal("magnitude."),
+            func.floor(
+                func.percent_rank().over(
+                    partition_by=(meds_cte.c.token_label, meds_cte.c.uom_label),
+                    order_by=meds_cte.c.dose,
+                )
+                * PERCENTILE_MULTIPLIER
+            ).cast(TEXT),
+        ).label("token_value"),
     ).cte("med_values")
 
     med_derived_events_combined_cte = union_all(
@@ -421,8 +451,7 @@ if __name__ == "__main__":
             med_values_cte.c.stay_id,
             med_values_cte.c.charttime,
             med_values_cte.c.token_label,
-            med_values_cte.c.dose.label("token_value"),
-            med_values_cte.c.token_value_disc,
+            med_values_cte.c.token_value,
             med_values_cte.c.uom_label,
         ).select_from(med_values_cte),
         select(
@@ -430,7 +459,6 @@ if __name__ == "__main__":
             token_value_cte.c.charttime,
             token_value_cte.c.token_label,
             token_value_cte.c.token_value,
-            token_value_cte.c.token_value_disc,
             literal(None).label("uom_label"),
         ).select_from(token_value_cte),
     ).cte("med_derived_events_combined")
@@ -442,7 +470,6 @@ if __name__ == "__main__":
             med_derived_events_combined_cte.c.charttime,
             med_derived_events_combined_cte.c.token_label,
             med_derived_events_combined_cte.c.token_value,
-            med_derived_events_combined_cte.c.token_value_disc,
             med_derived_events_combined_cte.c.uom_label,
             func.row_number()
             .over(
@@ -452,7 +479,7 @@ if __name__ == "__main__":
                 ),
                 order_by=(
                     med_derived_events_combined_cte.c.token_label,
-                    med_derived_events_combined_cte.c.token_value_disc,
+                    med_derived_events_combined_cte.c.token_value,
                 ),
             )
             .label("event_idx"),
@@ -482,10 +509,7 @@ if __name__ == "__main__":
             select(
                 numbered_events_cte.c.stay_id,
                 numbered_events_cte.c.charttime,
-                func.concat(
-                    literal("magnitude."),
-                    cast(numbered_events_cte.c.token_value_disc, TEXT),
-                ).label("token"),
+                numbered_events_cte.c.token_value.label("token"),
                 numbered_events_cte.c.event_idx,
                 literal(3).label("sort_order"),
             )
